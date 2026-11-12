@@ -128,10 +128,10 @@ details.pl{background:none;border:0;padding:0}details.pl summary{font-size:15px;
 <div class="w2" id="rg" style="font-size:13px;color:var(--mu)"></div>
 </div></details>
 
-<details class="pl" id="sybox"><summary>Sincronizar entre dispositivos (GitHub)</summary>
+<details class="pl" id="sybox"><summary>Sincronizar entre dispositivos</summary>
 <div class="f" style="margin-top:0">
-<div><label>Usuario de GitHub</label><input id="syo" autocapitalize="off" autocomplete="off"></div>
-<div><label>Repositorio privado</label><input id="syr" placeholder="dron-datos" autocapitalize="off" autocomplete="off"></div>
+<div><label>Usuario</label><input id="syo" autocapitalize="off" autocomplete="off"></div>
+<div><label>Repositorio privado</label><input id="syr" autocapitalize="off" autocomplete="off"></div>
 <div class="w2"><label>Token (solo para ese repositorio)</label><input id="syt" type="password" autocomplete="off"></div>
 <div><button class="btn p" id="syc" style="width:100%">Conectar</button></div>
 <div><button class="btn" id="syn" style="width:100%">Sincronizar ahora</button></div>
@@ -290,23 +290,24 @@ async function syNow(q){if(!SY||syBusy)return;if(navigator.onLine===false){netUp
  try{for(var tries=0;tries<2;tries++){
   var rd=await syGet();syNet=false;var rr=rd?(rd.rev||0):0,sr=+(localStorage.getItem("dsr")||0),lr=S.rev||0,lc=lr>sr,rc=rr>sr;
   try{
-   if(rd&&rc&&!lc){syApply(rd);localStorage.setItem("dsr",String(rr));sym("Datos actualizados desde GitHub · "+syHr())}
-   else if(rd&&rc&&lc){syMerge(rd);S.rev=Math.max(nrev(),rr+1);syLocal();await syPut();render();sym("Datos combinados con los de GitHub · "+syHr())}
-   else if(lc||(!rd&&(S.jobs||[]).length)){if(!S.rev){S.rev=nrev();syLocal()}await syPut();sym("Enviado a GitHub · "+syHr())}
+   if(rd&&rc&&!lc){syApply(rd);localStorage.setItem("dsr",String(rr));sym("Datos actualizados · "+syHr())}
+   else if(rd&&rc&&lc){syMerge(rd);S.rev=Math.max(nrev(),rr+1);syLocal();await syPut();render();sym("Datos combinados · "+syHr())}
+   else if(lc||(!rd&&(S.jobs||[]).length)){if(!S.rev){S.rev=nrev();syLocal()}await syPut();sym("Enviado · "+syHr())}
    else sym("Todo al día · "+syHr());
    break}catch(e){if(e&&e.message==="conflicto"&&tries===0)continue;throw e}
  }}catch(e){syNet=e instanceof TypeError;sym("No se pudo sincronizar: "+((e&&e.message)||"sin conexión")+" Se reintentará.")}
  syBusy=false;netUpdate()}
 function syQueue(){netUpdate();if(!SY)return;clearTimeout(syT);syT=setTimeout(syNow,700)}
+function syShow(){["syo","syr","syt","syc"].forEach(function(i){var e=$(i);if(!e)return;var p=e.parentNode;p.style.display=SY?"none":""});if(SY){$("syo").value="";$("syr").value="";$("syt").value=""}}
 function syInit(){var o=$("syo");if(!o)return;netUpdate();
  window.addEventListener("online",function(){syNet=false;netUpdate();syNow()});window.addEventListener("offline",netUpdate);
- if(SY){o.value=SY.o;$("syr").value=SY.r;sym("Versión 5 · Conectado a "+SY.o+"/"+SY.r+".");syNow()}
+ syShow();if(SY){sym("Versión 5 · Conectado.");syNow()}
  setInterval(function(){if(SY&&document.visibilityState==="visible")syNow(true)},5000);
  document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")syNow()});
  $("syc").onclick=function(){var a=$("syo").value.trim(),r=$("syr").value.trim(),t=$("syt").value.trim();if(!a||!r||!t){sym("Completa usuario, repositorio y token.");return}
-  SY={o:a,r:r,t:t};try{localStorage.setItem("dsync",JSON.stringify(SY));localStorage.setItem("dsr","0")}catch(e){}$("syt").value="";syBusy=false;syNow()};
+  SY={o:a,r:r,t:t};try{localStorage.setItem("dsync",JSON.stringify(SY));localStorage.setItem("dsr","0")}catch(e){}$("syt").value="";$("syo").value="";$("syr").value="";syShow();syBusy=false;syNow()};
  $("syn").onclick=function(){if(!SY){sym("Primero toca Conectar.");return}syNow()};
- $("syd").onclick=function(){SY=null;try{localStorage.removeItem("dsync");localStorage.removeItem("dsr")}catch(e){}$("syo").value=$("syr").value=$("syt").value="";sym("Este dispositivo ya no está conectado.")}}
+ $("syd").onclick=function(){SY=null;try{localStorage.removeItem("dsync");localStorage.removeItem("dsr")}catch(e){}$("syo").value=$("syr").value=$("syt").value="";syShow();sym("Este dispositivo ya no está conectado.")}}
 /*SYNC-END*/
 $("pv").onclick=function(){if(V==="day")ref.setDate(ref.getDate()-1);else if(V==="week")ref.setDate(ref.getDate()-7);else ref.setMonth(ref.getMonth()-1,1);render()};
 $("nx").onclick=function(){if(V==="day")ref.setDate(ref.getDate()+1);else if(V==="week")ref.setDate(ref.getDate()+7);else ref.setMonth(ref.getMonth()+1,1);render()};
