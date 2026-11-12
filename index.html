@@ -255,7 +255,7 @@ document.addEventListener("click",function(e){var a=e.target.closest&&e.target.c
  if(a.dataset.q!=null&&a.dataset.q!==""){$("q").value=a.dataset.q;render();var b=$("jobsbox");b.open=true;b.scrollIntoView({behavior:"smooth"});return}
  var g=a.dataset.go;if(g){if(g.length===7){V="month";ref=new Date(+g.slice(0,4),+g.slice(5)-1,1)}else{V="day";ref=pd(g)}$("q").value="";render();window.scrollTo({top:0,behavior:"smooth"})}});
 /*SYNC-START*/
-var SY=null,SHA=null,syBusy=false,syT=null;
+var SY=null,SHA=null,syBusy=false,syT=null,SYET=null,SYC=null;
 try{SY=JSON.parse(localStorage.getItem("dsync")||"null")}catch(e){}
 function nrev(){return Math.max(Date.now(),(S.rev||0)+1)}
 function sym(t){var e=$("sym");if(e)e.textContent=t}
@@ -265,20 +265,22 @@ function syUrl(){return"https://api.github.com/repos/"+encodeURIComponent(SY.o)+
 function b64e(s){var b=new TextEncoder().encode(s),o="";for(var i=0;i<b.length;i+=8192)o+=String.fromCharCode.apply(null,b.subarray(i,i+8192));return btoa(o)}
 function b64d(s){var b=atob(s.replace(/\s/g,"")),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return new TextDecoder().decode(u)}
 function syErr(r){return new Error(r.status===401||r.status===403?"el token no es válido o no tiene permiso.":r.status===404?"no encuentro ese repositorio (revisa usuario y nombre).":"error "+r.status)}
-async function syGet(){var r=await fetch(syUrl()+"?t="+Date.now(),{headers:syHd(),cache:"no-store"});
- if(r.status===404){var rp=await fetch("https://api.github.com/repos/"+encodeURIComponent(SY.o)+"/"+encodeURIComponent(SY.r),{headers:syHd(),cache:"no-store"});if(!rp.ok)throw syErr(rp);SHA=null;return null}
- if(!r.ok)throw syErr(r);var j=await r.json();SHA=j.sha;return JSON.parse(b64d(j.content))}
+async function syGet(){var hd=syHd();if(SYET&&SYC)hd["If-None-Match"]=SYET;
+ var r=await fetch(syUrl(),{headers:hd,cache:"no-store"});
+ if(r.status===304&&SYC)return SYC;
+ if(r.status===404){var rp=await fetch("https://api.github.com/repos/"+encodeURIComponent(SY.o)+"/"+encodeURIComponent(SY.r),{headers:syHd(),cache:"no-store"});if(!rp.ok)throw syErr(rp);SHA=null;SYET=null;SYC=null;return null}
+ if(!r.ok)throw syErr(r);var j=await r.json();SHA=j.sha;var d=JSON.parse(b64d(j.content));SYET=r.headers.get("ETag");SYC=d;return d}
 async function syPut(){var body={message:"datos "+new Date().toISOString(),content:b64e(JSON.stringify(S))};if(SHA)body.sha=SHA;
  var r=await fetch(syUrl(),{method:"PUT",headers:syHd(),body:JSON.stringify(body)});
  if(r.status===409||r.status===422)throw new Error("conflicto");if(!r.ok)throw syErr(r);
- var j=await r.json();SHA=j.content.sha;localStorage.setItem("dsr",String(S.rev))}
+ var j=await r.json();SHA=j.content.sha;SYET=null;SYC=null;localStorage.setItem("dsr",String(S.rev))}
 function jk2(j){return[j.d,j.f||"",j.h,j.p||"",j.hp?(j.hn||"")+":"+hha(j):""].join("|")}
 function syMerge(rd){var seen={},ids={};S.jobs.forEach(function(j){seen[jk2(j)]=1;ids[j.id]=1});
  (rd.jobs||[]).forEach(function(j){if(!j||seen[jk2(j)])return;if(ids[j.id])j.id=Date.now()+Math.floor(Math.random()*1e6);S.jobs.push(j);seen[jk2(j)]=1;ids[j.id]=1;if(j.k&&S.camps.indexOf(j.k)<0)S.camps.push(j.k)});
  S.fl=Object.assign({},rd.fl||{},S.fl||{});S.pl=Object.assign({},rd.pl||{},S.pl||{});S.hl=Array.from(new Set((S.hl||[]).concat(rd.hl||[])))}
-function syApply(rd){S=rd;S.jobs=S.jobs||[];if(!S.camps||!S.camps.length)S.camps=["2026/27"];if(!S.cur)S.cur=S.camps[0];try{localStorage.setItem("dl",JSON.stringify(S))}catch(e){}render()}
+function syApply(rd){S=JSON.parse(JSON.stringify(rd));S.jobs=S.jobs||[];if(!S.camps||!S.camps.length)S.camps=["2026/27"];if(!S.cur)S.cur=S.camps[0];try{localStorage.setItem("dl",JSON.stringify(S))}catch(e){}render()}
 function syLocal(){try{localStorage.setItem("dl",JSON.stringify(S))}catch(e){}}
-async function syNow(){if(!SY||syBusy)return;syBusy=true;sym("Sincronizando…");
+async function syNow(q){if(!SY||syBusy)return;syBusy=true;if(q!==true)sym("Sincronizando…");
  try{for(var tries=0;tries<2;tries++){
   var rd=await syGet(),rr=rd?(rd.rev||0):0,sr=+(localStorage.getItem("dsr")||0),lr=S.rev||0,lc=lr>sr,rc=rr>sr;
   try{
@@ -289,9 +291,9 @@ async function syNow(){if(!SY||syBusy)return;syBusy=true;sym("Sincronizando…")
    break}catch(e){if(e&&e.message==="conflicto"&&tries===0)continue;throw e}
  }}catch(e){sym("No se pudo sincronizar: "+((e&&e.message)||"sin conexión")+" Se reintentará.")}
  syBusy=false}
-function syQueue(){if(!SY)return;clearTimeout(syT);syT=setTimeout(syNow,2500)}
-function syInit(){var o=$("syo");if(!o)return;if(SY){o.value=SY.o;$("syr").value=SY.r;sym("Versión 3 · Conectado a "+SY.o+"/"+SY.r+".");syNow()}
- setInterval(function(){if(SY&&document.visibilityState==="visible")syNow()},20000);
+function syQueue(){if(!SY)return;clearTimeout(syT);syT=setTimeout(syNow,700)}
+function syInit(){var o=$("syo");if(!o)return;if(SY){o.value=SY.o;$("syr").value=SY.r;sym("Versión 4 · Conectado a "+SY.o+"/"+SY.r+".");syNow()}
+ setInterval(function(){if(SY&&document.visibilityState==="visible")syNow(true)},5000);
  document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")syNow()});
  $("syc").onclick=function(){var a=$("syo").value.trim(),r=$("syr").value.trim(),t=$("syt").value.trim();if(!a||!r||!t){sym("Completa usuario, repositorio y token.");return}
   SY={o:a,r:r,t:t};try{localStorage.setItem("dsync",JSON.stringify(SY));localStorage.setItem("dsr","0")}catch(e){}$("syt").value="";syBusy=false;syNow()};
