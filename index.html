@@ -158,7 +158,7 @@ function pd(s){var p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2])}
 function mon(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
 function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;")}
 function n(x,d){return x.toLocaleString("en-US",{minimumFractionDigits:d||0,maximumFractionDigits:d==null?2:d})}
-function save(){S.rev=Date.now();try{localStorage.setItem("dl",JSON.stringify(S))}catch(e){}syQueue();
+function save(){S.rev=nrev();try{localStorage.setItem("dl",JSON.stringify(S))}catch(e){}syQueue();
  if(stor){stor.set({s:JSON.stringify(S)}).catch(function(){})}}
 function range(){
  if(V==="day"){var q=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate());return[q,q]}
@@ -257,6 +257,7 @@ document.addEventListener("click",function(e){var a=e.target.closest&&e.target.c
 /*SYNC-START*/
 var SY=null,SHA=null,syBusy=false,syT=null;
 try{SY=JSON.parse(localStorage.getItem("dsync")||"null")}catch(e){}
+function nrev(){return Math.max(Date.now(),(S.rev||0)+1)}
 function sym(t){var e=$("sym");if(e)e.textContent=t}
 function syHr(){var d=new Date();return z(d.getHours())+":"+z(d.getMinutes())}
 function syHd(){return{"Authorization":"Bearer "+SY.t,"Accept":"application/vnd.github+json","Content-Type":"application/json"}}
@@ -282,14 +283,15 @@ async function syNow(){if(!SY||syBusy)return;syBusy=true;sym("Sincronizando…")
   var rd=await syGet(),rr=rd?(rd.rev||0):0,sr=+(localStorage.getItem("dsr")||0),lr=S.rev||0,lc=lr>sr,rc=rr>sr;
   try{
    if(rd&&rc&&!lc){syApply(rd);localStorage.setItem("dsr",String(rr));sym("Datos actualizados desde GitHub · "+syHr())}
-   else if(rd&&rc&&lc){syMerge(rd);S.rev=Date.now();syLocal();await syPut();render();sym("Datos combinados con los de GitHub · "+syHr())}
-   else if(lc||(!rd&&(S.jobs||[]).length)){if(!S.rev){S.rev=Date.now();syLocal()}await syPut();sym("Enviado a GitHub · "+syHr())}
+   else if(rd&&rc&&lc){syMerge(rd);S.rev=Math.max(nrev(),rr+1);syLocal();await syPut();render();sym("Datos combinados con los de GitHub · "+syHr())}
+   else if(lc||(!rd&&(S.jobs||[]).length)){if(!S.rev){S.rev=nrev();syLocal()}await syPut();sym("Enviado a GitHub · "+syHr())}
    else sym("Todo al día · "+syHr());
    break}catch(e){if(e&&e.message==="conflicto"&&tries===0)continue;throw e}
  }}catch(e){sym("No se pudo sincronizar: "+((e&&e.message)||"sin conexión")+" Se reintentará.")}
  syBusy=false}
 function syQueue(){if(!SY)return;clearTimeout(syT);syT=setTimeout(syNow,2500)}
-function syInit(){var o=$("syo");if(!o)return;if(SY){o.value=SY.o;$("syr").value=SY.r;sym("Conectado a "+SY.o+"/"+SY.r+".");syNow()}
+function syInit(){var o=$("syo");if(!o)return;if(SY){o.value=SY.o;$("syr").value=SY.r;sym("Versión 3 · Conectado a "+SY.o+"/"+SY.r+".");syNow()}
+ setInterval(function(){if(SY&&document.visibilityState==="visible")syNow()},20000);
  document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")syNow()});
  $("syc").onclick=function(){var a=$("syo").value.trim(),r=$("syr").value.trim(),t=$("syt").value.trim();if(!a||!r||!t){sym("Completa usuario, repositorio y token.");return}
   SY={o:a,r:r,t:t};try{localStorage.setItem("dsync",JSON.stringify(SY));localStorage.setItem("dsr","0")}catch(e){}$("syt").value="";syBusy=false;syNow()};
