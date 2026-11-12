@@ -354,7 +354,7 @@ render();
   if(db&&id){stor=db.doc("data/users/"+id+"/log");var sn=await stor.get();if(sn.exists&&sn.data().s)raw=sn.data().s}}}catch(e){}
  if(raw){try{var t=JSON.parse(raw);if(t&&t.jobs){S=t;if(!S.camps||!S.camps.length)S.camps=["2026/27"];if(!S.cur)S.cur=S.camps[0]}}catch(e){}}
  render();syInit()})();
-if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+if("serviceWorker" in navigator){var hadSW=!!navigator.serviceWorker.controller,rl=false;navigator.serviceWorker.addEventListener("controllerchange",function(){if(hadSW&&!rl){rl=true;location.reload()}});window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(function(r){r.update()}).catch(function(){})})}
 </script>
 </body>
 </html>
